@@ -5,9 +5,6 @@ dist
 tmp
 out-tsc
 
-# dependencies
-node_modules
-
 # IDEs and editors
 /.idea
 .project
@@ -38,8 +35,35 @@ testem.log
 .DS_Store
 Thumbs.db
 
+
+vite.config.*.timestamp*
+
+# NX
+.nx/installation
 .nx/cache
-.nx/workspace-data
 .nx/migrate-runs
-.claude/worktrees
-.claude/settings.local.json
+
+.nx/workspace-data
+.nx/self-healing
+
+# Dependencies
+node_modules/
+
+# Build outputs
+build/
+out/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+.env*.local
+.npmrc
