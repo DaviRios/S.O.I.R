@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { UsersService } from '../users/users.service';
+import { UsersService } from '../../users/users.service';
 import { PasswordHasherService } from './password-hasher.service';
 
 
@@ -12,17 +12,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async signUp(username: string, password: string) {
-    const passwordHash = await this.passwordHasher.hash(password);
-
-    return this.usersService.create({
-      username,
-      passwordHash,
-    });
-  }
-
-  async signIn(username: string, password: string) {
-    const user = await this.usersService.findOne(username);
+  async signIn(identifier: string, password: string) {
+    const user = await this.usersService.findOne(identifier);
 
     if (!user) {
       throw new UnauthorizedException('Usuário ou senha inválidos');
@@ -41,7 +32,25 @@ export class AuthService {
       accessToken: await this.jwtService.signAsync({
         sub: user.id,
         username: user.username,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        groups: user.groups,
+        'cognito:groups': user.groups,
       }),
+      user: this.usersService.toPublicUser(user),
     };
+  }
+
+  signDevToken(email: string): Promise<string> {
+    return this.jwtService.signAsync({
+      sub: email,
+      email,
+      username: email,
+      name: 'Desenvolvedor local',
+      role: 'ADMIN',
+      groups: ['Hub_admins'],
+      'cognito:groups': ['Hub_admins'],
+    });
   }
 }
