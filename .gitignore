@@ -67,3 +67,7 @@ Thumbs.db
 .env.local
 .env*.local
 .npmrc
+
+# Local CMS data (created automatically at runtime)
+/data/*.json
+/data/*.tmp

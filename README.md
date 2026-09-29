@@ -1,96 +1,113 @@
 # Soir
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+CMS institucional independente desenvolvido em Node.js e TypeScript. O projeto reúne o painel editorial e a API REST `/v1` em um monorepo Nx.
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+**Autoria:** Davi Rios
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/getting-started/intro#learn-nx?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+## Stack
 
-## Run tasks
+- Backend: Node.js, TypeScript e NestJS 11
+- Frontend: React 19, Vite, Tailwind CSS 4 e TipTap
+- Autenticação: JWT + Argon2
+- Persistência local: JSON com gravação serializada
+- Mídia local: upload de imagens e vídeos em `data/uploads`
+- Monorepo: Nx 23
 
-To run tasks with Nx use:
+## Funcionalidades
 
-```sh
-npx nx <target> <project-name>
+- autenticação administrativa;
+- autores e posts do blog;
+- slides, pop-ups, ecossistema e links de blog da home;
+- histórias de clientes;
+- cases, imagens do case e depoimentos;
+- mídias da página Sobre;
+- parceiros, carreiras e serviços;
+- galeria com upload de imagens e vídeos;
+- ciclos de ativação, rascunho, publicação e despublicação;
+- conteúdo em português e inglês;
+- páginas públicas agregadas para `home`, `cases`, `about` e `blog`.
+
+## Executando localmente
+
+Requisitos: Node.js 20+ e npm.
+
+```bash
+npm install
+npm run dev
 ```
 
-For example:
+- Painel: http://localhost:4200
+- API: http://localhost:3000/v1
+- Health/info: http://localhost:3000/v1
 
-```sh
-npx nx build myproject
+Credenciais iniciais do ambiente local:
+
+```text
+E-mail: admin@soir.local
+Senha:  admin123
 ```
 
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
+Defina `CMS_ADMIN_PASSWORD` antes da primeira execução para trocar a senha inicial. Em produção, defina também um `JWT_SECRET` forte.
 
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## Comandos
 
-## Add new projects
-
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
-
-To install a new plugin you can use the `nx add` command. Here's an example of adding the React plugin:
-```sh
-npx nx add @nx/react
+```bash
+npm run dev          # backend e frontend
+npm run dev:back     # somente API
+npm run dev:front    # somente painel
+npm run build        # build de produção
+npm test             # testes do monorepo
+npm run typecheck    # validação TypeScript estrita
 ```
 
-Use the plugin's generator to create new projects. For example, to create a new React app or library:
+## Rotas compatíveis
 
-```sh
-# Generate an app
-npx nx g @nx/react:app demo
+Rotas administrativas requerem `Authorization: Bearer <token>`:
 
-# Generate a library
-npx nx g @nx/react:lib some-lib
+| Recurso               | Base                  |
+| --------------------- | --------------------- |
+| Autenticação          | `POST /v1/users/auth` |
+| Slides                | `/v1/slides`          |
+| Pop-ups               | `/v1/popups`          |
+| Ecossistema           | `/v1/ecosystems`      |
+| Links da home         | `/v1/home-blog-links` |
+| Cases                 | `/v1/cases`           |
+| Histórias de clientes | `/v1/client-stories`  |
+| Blog                  | `/v1/blog-posts`      |
+| Autores               | `/v1/authors`         |
+| Imagens               | `/v1/images`          |
+| Vídeos                | `/v1/videos`          |
+| Mídias Sobre          | `/v1/about-media`     |
+| Parceiros             | `/v1/partners`        |
+| Carreiras             | `/v1/careers`         |
+| Serviços              | `/v1/services`        |
+
+Rotas públicas, sem autenticação:
+
+```text
+GET /v1/public/pages/home?language=PORTUGUESE
+GET /v1/public/pages/cases
+GET /v1/public/pages/about
+GET /v1/public/pages/blog?language=PORTUGUESE
 ```
 
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
+## Configuração
 
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+O backend aceita as seguintes variáveis:
 
-## Set up CI!
+| Variável             | Padrão                            | Uso                           |
+| -------------------- | --------------------------------- | ----------------------------- |
+| `PORT`               | `3000`                            | porta da API                  |
+| `CORS_ORIGIN`        | `http://localhost:4200`           | origens separadas por vírgula |
+| `JWT_SECRET`         | segredo apenas de desenvolvimento | assinatura JWT                |
+| `CMS_ADMIN_USER`     | `admin`                           | usuário inicial               |
+| `CMS_ADMIN_EMAIL`    | `admin@soir.local`                | e-mail inicial                |
+| `CMS_ADMIN_PASSWORD` | `admin123`                        | senha inicial                 |
+| `CMS_DATA_FILE`      | `data/cms.json`                   | arquivo de persistência       |
+| `CMS_UPLOAD_DIR`     | `data/uploads`                    | diretório de mídia            |
 
-### Step 1
+No frontend, `VITE_API_CMS_URL` pode apontar para outra API. Em desenvolvimento, o proxy do Vite encaminha `/v1` para `http://localhost:3000`.
 
-To connect to Nx Cloud, run the following command:
+## Dados
 
-```sh
-npx nx connect
-```
-
-Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
-
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-### Step 2
-
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
-```
-
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Install Nx Console
-
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
-
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Useful links
-
-Learn more:
-
-- [Learn more about this workspace setup](https://nx.dev/getting-started/intro#learn-nx?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+O banco local e os uploads são criados automaticamente e ignorados pelo Git. O formato de armazenamento foi isolado no módulo `storage`, permitindo substituir o adaptador local por MySQL/PostgreSQL e S3 sem alterar os controllers ou o frontend.
