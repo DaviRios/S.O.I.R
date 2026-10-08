@@ -1,19 +1,12 @@
-import { Logger } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app/app.module';
+import 'dotenv/config';
+import { buildApp } from './app';
+import { loadEnv } from './config/env';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  app.setGlobalPrefix('v1');
-  app.enableCors({
-    origin: process.env.CORS_ORIGIN?.split(',').map((origin) => origin.trim()) ??
-      'http://localhost:4200',
-    exposedHeaders: ['Location'],
-  });
-
-  const port = Number(process.env.PORT ?? 3000);
-  await app.listen(port);
-  Logger.log(`CMS API disponível em http://localhost:${port}/v1`);
+  const env = loadEnv();
+  const app = await buildApp({ env });
+  await app.listen({ port: env.PORT, host: '0.0.0.0' });
+  app.log.info(`Soir CMS API disponível em http://localhost:${env.PORT}/v1`);
 }
 
 void bootstrap();

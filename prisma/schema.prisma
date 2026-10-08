@@ -1,0 +1,355 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../apps/back/src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  EDITOR
+}
+
+enum Language {
+  ENGLISH
+  PORTUGUESE
+}
+
+enum PublicationStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum PopupStyle {
+  ORANGE_WHITE
+  WHITE_ORANGE
+  PURPLE_WHITE
+  WHITE_PURPLE
+}
+
+enum MediaKind {
+  IMAGE
+  VIDEO
+  FILE
+}
+
+enum AboutMediaType {
+  IMAGE
+  VIDEO
+}
+
+model User {
+  id           String        @id @default(uuid()) @db.Uuid
+  username     String        @unique
+  email        String        @unique
+  name         String
+  passwordHash String        @map("password_hash")
+  role         UserRole      @default(EDITOR)
+  groups       String[]      @default([])
+  isActive     Boolean       @default(true) @map("is_active")
+  deletedAt    DateTime?     @map("deleted_at")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  sessions     AuthSession[]
+
+  @@map("users")
+}
+
+model AuthSession {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("auth_sessions")
+}
+
+model Author {
+  id        String     @id @default(uuid()) @db.Uuid
+  name      String
+  bio       String     @default("")
+  imageUrl  String     @default("") @map("image_url")
+  isActive  Boolean    @default(true) @map("is_active")
+  deletedAt DateTime?  @map("deleted_at")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+  posts     BlogPost[]
+
+  @@index([isActive])
+  @@map("authors")
+}
+
+model BlogPost {
+  id                String            @id @default(uuid()) @db.Uuid
+  title             String
+  url               String
+  description       String            @default("")
+  imageUrl          String            @default("") @map("image_url")
+  authorId          String            @db.Uuid @map("author_id")
+  language          Language          @default(PORTUGUESE)
+  publicationStatus PublicationStatus @default(DRAFT) @map("publication_status")
+  isActive          Boolean           @default(true) @map("is_active")
+  publishedAt       DateTime?         @map("published_at")
+  deletedAt         DateTime?         @map("deleted_at")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  author            Author            @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([authorId])
+  @@index([language, publicationStatus, isActive])
+  @@map("blog_posts")
+}
+
+model MediaAsset {
+  id            String          @id @default(uuid()) @db.Uuid
+  kind          MediaKind
+  name          String
+  size          Int
+  extension     String
+  tags          String[]        @default([])
+  storagePath   String          @unique @map("storage_path")
+  contentType   String          @map("content_type")
+  isActive      Boolean         @default(true) @map("is_active")
+  deletedAt     DateTime?       @map("deleted_at")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+  slides        Slide[]         @relation("SlideLogo")
+  ecosystems    EcosystemItem[] @relation("EcosystemImage")
+  clientStories ClientStory[]   @relation("ClientStoryImage")
+  caseLogos     Case[]          @relation("CaseLogo")
+  caseImages    CaseImage[]
+  aboutMedia    AboutMedia[]
+  partnerLogos  Partner[]       @relation("PartnerLogo")
+
+  @@index([kind, isActive])
+  @@map("media_assets")
+}
+
+model Slide {
+  id                String            @id @default(uuid()) @db.Uuid
+  logoId            String            @db.Uuid @map("logo_id")
+  text              String
+  buttonText        String            @default("") @map("button_text")
+  buttonUrl         String            @default("") @map("button_url")
+  language          Language          @default(PORTUGUESE)
+  publicationStatus PublicationStatus @default(DRAFT) @map("publication_status")
+  isActive          Boolean           @default(true) @map("is_active")
+  publishedAt       DateTime?         @map("published_at")
+  deletedAt         DateTime?         @map("deleted_at")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  logo              MediaAsset        @relation("SlideLogo", fields: [logoId], references: [id], onDelete: Restrict)
+
+  @@index([language, publicationStatus, isActive])
+  @@map("slides")
+}
+
+model Popup {
+  id                String            @id @default(uuid()) @db.Uuid
+  title             String
+  description       String            @default("")
+  buttonText        String            @default("") @map("button_text")
+  redirectUrl       String            @default("") @map("redirect_url")
+  buttonText2       String            @default("") @map("button_text_2")
+  redirectUrl2      String            @default("") @map("redirect_url_2")
+  style             PopupStyle        @default(ORANGE_WHITE)
+  language          Language          @default(PORTUGUESE)
+  publicationStatus PublicationStatus @default(DRAFT) @map("publication_status")
+  isActive          Boolean           @default(true) @map("is_active")
+  publishedAt       DateTime?         @map("published_at")
+  deletedAt         DateTime?         @map("deleted_at")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  @@index([language, publicationStatus, isActive])
+  @@map("popups")
+}
+
+model EcosystemItem {
+  id                String            @id @default(uuid()) @db.Uuid
+  name              String
+  imageId           String            @db.Uuid @map("image_id")
+  publicationStatus PublicationStatus @default(DRAFT) @map("publication_status")
+  isActive          Boolean           @default(true) @map("is_active")
+  publishedAt       DateTime?         @map("published_at")
+  deletedAt         DateTime?         @map("deleted_at")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  image             MediaAsset        @relation("EcosystemImage", fields: [imageId], references: [id], onDelete: Restrict)
+
+  @@index([publicationStatus, isActive])
+  @@map("ecosystem_items")
+}
+
+model HomeBlogLink {
+  id                String            @id @default(uuid()) @db.Uuid
+  url               String
+  label             String            @default("")
+  publicationStatus PublicationStatus @default(DRAFT) @map("publication_status")
+  isActive          Boolean           @default(true) @map("is_active")
+  publishedAt       DateTime?         @map("published_at")
+  deletedAt         DateTime?         @map("deleted_at")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  @@index([publicationStatus, isActive])
+  @@map("home_blog_links")
+}
+
+model ClientStory {
+  id                String            @id @default(uuid()) @db.Uuid
+  imageId           String            @db.Uuid @map("image_id")
+  shortTitle        String            @map("short_title")
+  longTitle         String            @map("long_title")
+  description       String
+  language          Language          @default(PORTUGUESE)
+  publicationStatus PublicationStatus @default(DRAFT) @map("publication_status")
+  isActive          Boolean           @default(true) @map("is_active")
+  publishedAt       DateTime?         @map("published_at")
+  deletedAt         DateTime?         @map("deleted_at")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  image             MediaAsset        @relation("ClientStoryImage", fields: [imageId], references: [id], onDelete: Restrict)
+
+  @@index([language, publicationStatus, isActive])
+  @@map("client_stories")
+}
+
+model Case {
+  id                String            @id @default(uuid()) @db.Uuid
+  title             String
+  shortTitle        String            @default("") @map("short_title")
+  subtitle          String            @default("")
+  content           String            @default("")
+  industry          String            @default("")
+  country           String            @default("")
+  tag               String            @default("")
+  logoId            String?           @db.Uuid @map("logo_id")
+  language          Language          @default(PORTUGUESE)
+  publicationStatus PublicationStatus @default(DRAFT) @map("publication_status")
+  isActive          Boolean           @default(true) @map("is_active")
+  publishedAt       DateTime?         @map("published_at")
+  deletedAt         DateTime?         @map("deleted_at")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  logo              MediaAsset?       @relation("CaseLogo", fields: [logoId], references: [id], onDelete: Restrict)
+  images            CaseImage[]
+  testimonials      CaseTestimonial[]
+
+  @@index([language, publicationStatus, isActive])
+  @@map("cases")
+}
+
+model CaseImage {
+  id        String     @id @default(uuid()) @db.Uuid
+  caseId    String     @db.Uuid @map("case_id")
+  imageId   String     @db.Uuid @map("image_id")
+  position  Int        @default(0)
+  isActive  Boolean    @default(true) @map("is_active")
+  deletedAt DateTime?  @map("deleted_at")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+  case      Case       @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  image     MediaAsset @relation(fields: [imageId], references: [id], onDelete: Restrict)
+
+  @@unique([caseId, imageId])
+  @@index([imageId])
+  @@map("case_images")
+}
+
+model CaseTestimonial {
+  id                String            @id @default(uuid()) @db.Uuid
+  caseId            String            @db.Uuid @map("case_id")
+  authorName        String            @map("author_name")
+  role              String            @default("")
+  company           String            @default("")
+  content           String
+  language          Language          @default(PORTUGUESE)
+  publicationStatus PublicationStatus @default(DRAFT) @map("publication_status")
+  isActive          Boolean           @default(true) @map("is_active")
+  publishedAt       DateTime?         @map("published_at")
+  deletedAt         DateTime?         @map("deleted_at")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  case              Case              @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId, language, publicationStatus, isActive])
+  @@map("case_testimonials")
+}
+
+model AboutMedia {
+  id                String            @id @default(uuid()) @db.Uuid
+  mediaId           String            @db.Uuid @map("media_id")
+  mediaType         AboutMediaType    @map("media_type")
+  caption           String            @default("")
+  sortOrder         Int               @default(0) @map("sort_order")
+  publicationStatus PublicationStatus @default(DRAFT) @map("publication_status")
+  isActive          Boolean           @default(true) @map("is_active")
+  publishedAt       DateTime?         @map("published_at")
+  deletedAt         DateTime?         @map("deleted_at")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  media             MediaAsset        @relation(fields: [mediaId], references: [id], onDelete: Restrict)
+
+  @@index([publicationStatus, isActive])
+  @@map("about_media")
+}
+
+model Partner {
+  id                String            @id @default(uuid()) @db.Uuid
+  name              String
+  logoId            String?           @db.Uuid @map("logo_id")
+  website           String            @default("")
+  publicationStatus PublicationStatus @default(DRAFT) @map("publication_status")
+  isActive          Boolean           @default(true) @map("is_active")
+  publishedAt       DateTime?         @map("published_at")
+  deletedAt         DateTime?         @map("deleted_at")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  logo              MediaAsset?       @relation("PartnerLogo", fields: [logoId], references: [id], onDelete: Restrict)
+
+  @@index([publicationStatus, isActive])
+  @@map("partners")
+}
+
+model Career {
+  id                String            @id @default(uuid()) @db.Uuid
+  title             String
+  description       String            @default("")
+  location          String            @default("")
+  language          Language          @default(PORTUGUESE)
+  publicationStatus PublicationStatus @default(DRAFT) @map("publication_status")
+  isActive          Boolean           @default(true) @map("is_active")
+  publishedAt       DateTime?         @map("published_at")
+  deletedAt         DateTime?         @map("deleted_at")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  @@index([language, publicationStatus, isActive])
+  @@map("careers")
+}
+
+model ServiceItem {
+  id                String            @id @default(uuid()) @db.Uuid
+  name              String
+  description       String            @default("")
+  language          Language          @default(PORTUGUESE)
+  publicationStatus PublicationStatus @default(DRAFT) @map("publication_status")
+  isActive          Boolean           @default(true) @map("is_active")
+  publishedAt       DateTime?         @map("published_at")
+  deletedAt         DateTime?         @map("deleted_at")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  @@index([language, publicationStatus, isActive])
+  @@map("service_items")
+}
