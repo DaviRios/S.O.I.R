@@ -1,4 +1,5 @@
 import { useState, useEffect, FormEvent } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   listPopups,
   createPopup,
@@ -27,8 +28,6 @@ export function PopupsTab({
   onSuccess,
   onCountChange,
 }: Props) {
-  const [popups, setPopups] = useState<PopupDTO[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -45,27 +44,18 @@ export function PopupsTab({
     label: string;
     onConfirm: () => Promise<void>;
   } | null>(null);
-
-  useEffect(() => {
-    load();
-  }, []);
+  const queryClient = useQueryClient();
+  const popupsQuery = useQuery({
+    queryKey: ['popups'],
+    queryFn: ({ signal }) => listPopups(undefined, signal),
+  });
+  const popups = popupsQuery.data ?? [];
+  const loading = popupsQuery.isPending;
+  useEffect(() => onCountChange(popups.length), [onCountChange, popups.length]);
 
   useEffect(() => {
     if (openFormTrigger > 0) openPopupForm();
   }, [openFormTrigger]);
-
-  async function load() {
-    setLoading(true);
-    try {
-      const data = await listPopups();
-      setPopups(data);
-      onCountChange(data.length);
-    } catch {
-      // silent
-    } finally {
-      setLoading(false);
-    }
-  }
 
   function openPopupForm(popup?: PopupDTO) {
     if (popup) {
@@ -129,7 +119,7 @@ export function PopupsTab({
       setShowForm(false);
       resetForm();
       const data = await listPopups();
-      setPopups(data);
+      queryClient.setQueryData(['popups'], data);
       onCountChange(data.length);
     } catch (err) {
       setError(
@@ -149,10 +139,14 @@ export function PopupsTab({
       if (popup.isPublished) await unpublishPopup(popup.id);
       else await publishPopup(popup.id);
       const data = await listPopups();
-      setPopups(data);
+      queryClient.setQueryData(['popups'], data);
       onCountChange(data.length);
-    } catch {
-      /* ignore */
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Erro ao alterar a publicação do popup.',
+      );
     }
   }
 
@@ -162,7 +156,7 @@ export function PopupsTab({
       onConfirm: async () => {
         await deletePopup(popup.id);
         const data = await listPopups();
-        setPopups(data);
+        queryClient.setQueryData(['popups'], data);
         onCountChange(data.length);
       },
     });

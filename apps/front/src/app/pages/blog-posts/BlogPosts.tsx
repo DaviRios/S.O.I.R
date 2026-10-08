@@ -1,181 +1,50 @@
-import {
-  useState,
-  useEffect,
-  FormEvent,
-  ChangeEvent,
-  useRef,
-  lazy,
-  Suspense,
-} from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   listBlogPosts,
-  createBlogPost,
-  updateBlogPost,
   publishBlogPost,
   unpublishBlogPost,
   deleteBlogPost,
   BlogPostDTO,
 } from '../../services/blog-posts.service';
-import {
-  listAuthorsDropdown,
-  createAuthor,
-  listAuthors,
-  AuthorDTO,
-} from '../../services/authors.service';
-import { uploadImage } from '../../services/images.service';
-
-const RichTextEditor = lazy(() =>
-  import('../../components/RichTextEditor/RichTextEditor').then((m) => ({
-    default: m.RichTextEditor,
-  })),
-);
+import { AuthorsPanel } from './components/AuthorsPanel';
+import { BlogPostForm } from './components/BlogPostForm';
+import { Alert } from '../../components/ui/Alert';
 
 const LANG_LABEL: Record<string, string> = { PORTUGUESE: 'PT', ENGLISH: 'EN' };
 
 export function BlogPosts() {
   const navigate = useNavigate();
 
-  const [posts, setPosts] = useState<BlogPostDTO[]>([]);
-  const [authors, setAuthors] = useState<AuthorDTO[]>([]);
-  const [allAuthors, setAllAuthors] = useState<AuthorDTO[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingPost, setEditingPost] = useState<BlogPostDTO | null>(null);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
-  const [title, setTitle] = useState('');
-  const [url, setUrl] = useState('');
-  const [description, setDescription] = useState('');
-  const [authorId, setAuthorId] = useState('');
-  const [language, setLanguage] = useState<'PORTUGUESE' | 'ENGLISH'>(
-    'PORTUGUESE',
-  );
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState('');
-  const fileRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
+  const postsQuery = useQuery({
+    queryKey: ['blog-posts'],
+    queryFn: ({ signal }) => listBlogPosts(undefined, signal),
+  });
+  const posts = postsQuery.data ?? [];
+  const loading = postsQuery.isPending;
 
-  const [showAuthorForm, setShowAuthorForm] = useState(false);
-  const [authorName, setAuthorName] = useState('');
-  const [authorBio, setAuthorBio] = useState('');
-  const [savingAuthor, setSavingAuthor] = useState(false);
-
-  useEffect(() => {
-    loadAll();
-  }, []);
-
-  async function loadAll() {
-    setLoading(true);
-    try {
-      const [postsData, authorsData] = await Promise.all([
-        listBlogPosts(),
-        listAuthors(),
-      ]);
-      console.log(
-        '[BlogPosts] posts recebidos:',
-        postsData.map((p) => ({
-          id: p.id,
-          title: p.title,
-          imageUrl: p.imageUrl,
-        })),
-      );
-      setPosts(postsData);
-      setAllAuthors(authorsData);
-    } catch {
-      // keep empty on failure
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function loadAuthorsDropdown() {
-    try {
-      const data = await listAuthorsDropdown();
-      setAuthors(data);
-    } catch {
-      // ignore
-    }
-  }
-
-  function onImageChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImageFile(file);
-    if (imagePreview) URL.revokeObjectURL(imagePreview);
-    setImagePreview(URL.createObjectURL(file));
-  }
-
-  function resetForm() {
-    if (imagePreview && imageFile) URL.revokeObjectURL(imagePreview);
-    setImageFile(null);
-    setImagePreview('');
-    setTitle('');
-    setUrl('');
-    setDescription('');
-    setAuthorId('');
-    setLanguage('PORTUGUESE');
-    setError('');
-    setEditingPost(null);
-    if (fileRef.current) fileRef.current.value = '';
+  async function refreshEditorial() {
+    await queryClient.invalidateQueries({ queryKey: ['blog-posts'] });
   }
 
   function openForm(post?: BlogPostDTO) {
-    if (post) {
-      setEditingPost(post);
-      setTitle(post.title);
-      setUrl(post.url);
-      setDescription(post.description ?? '');
-      setAuthorId(post.authorId ?? '');
-      setLanguage(post.language);
-      setImagePreview(post.imageUrl ?? '');
-      setImageFile(null);
-    }
+    setEditingPost(post ?? null);
     setShowForm(true);
-    loadAuthorsDropdown();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function closeForm() {
     setShowForm(false);
-    resetForm();
-  }
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!authorId) {
-      setError('Selecione um autor para o post.');
-      return;
-    }
     setError('');
-    setSaving(true);
-    try {
-      let imageUrl: string | undefined;
-      if (imageFile) {
-        const imageName = imageFile.name.replace(/\.[^.]+$/, '');
-        const uploaded = await uploadImage(imageFile, imageName, ['blog']);
-        imageUrl = uploaded.url;
-      } else if (imagePreview) {
-        imageUrl = imagePreview;
-      }
-      const payload = { title, url, description, imageUrl, authorId, language };
-      if (editingPost) {
-        await updateBlogPost(editingPost.id, payload);
-        setSuccess('Post atualizado com sucesso!');
-      } else {
-        await createBlogPost(payload);
-        setSuccess('Post criado com sucesso!');
-      }
-      setTimeout(() => setSuccess(''), 3500);
-      closeForm();
-      loadAll();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao salvar post.');
-    } finally {
-      setSaving(false);
-    }
+    setEditingPost(null);
   }
 
   async function handlePublishToggle(post: BlogPostDTO) {
@@ -185,9 +54,13 @@ export function BlogPosts() {
       } else {
         await publishBlogPost(post.id);
       }
-      loadAll();
-    } catch {
-      // silently fail
+      await queryClient.invalidateQueries({ queryKey: ['blog-posts'] });
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Erro ao alterar publicação.',
+      );
     }
   }
 
@@ -199,27 +72,11 @@ export function BlogPosts() {
     setConfirmingId(null);
     try {
       await deleteBlogPost(post.id);
-      loadAll();
-    } catch {
-      // silently fail
-    }
-  }
-
-  async function handleCreateAuthor(e: FormEvent) {
-    e.preventDefault();
-    if (!authorName.trim()) return;
-    setSavingAuthor(true);
-    try {
-      await createAuthor({ name: authorName, bio: authorBio || undefined });
-      setAuthorName('');
-      setAuthorBio('');
-      setShowAuthorForm(false);
-      loadAll();
-      loadAuthorsDropdown();
-    } catch {
-      // ignore
-    } finally {
-      setSavingAuthor(false);
+      await queryClient.invalidateQueries({ queryKey: ['blog-posts'] });
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : 'Erro ao remover post.',
+      );
     }
   }
 
@@ -292,6 +149,12 @@ export function BlogPosts() {
           )}
         </div>
 
+        {error && (
+          <div className="mb-5">
+            <Alert>{error}</Alert>
+          </div>
+        )}
+
         {success && (
           <div
             className={`${'flex items-center [gap:8px] [border-radius:10px] [padding:12px_16px] [font-size:14px] font-medium [margin-bottom:20px]'} ${'[background:#f0fdf4] [border:1px_solid_#bbf7d0] [color:#16a34a]'}`}
@@ -311,320 +174,18 @@ export function BlogPosts() {
         )}
 
         {showForm && (
-          <div
-            className={
-              '[background:#ffffff] [border-radius:20px] [border:1px_solid_#C5EDF8] [box-shadow:0_4px_24px_rgba(84,_200,_232,_0.08)] [padding:28px_32px] [margin-bottom:32px]'
-            }
-          >
-            <div
-              className={
-                'flex items-start justify-between [margin-bottom:24px]'
-              }
-            >
-              <div>
-                <h2
-                  className={
-                    '[font-size:17px] font-bold [color:#1e1b2e] [margin:0_0_4px]'
-                  }
-                >
-                  {editingPost ? 'Editar Rascunho' : 'Novo Post'}
-                </h2>
-                <p className={'[font-size:14px] [color:#7c6fa0] [margin:0]'}>
-                  {editingPost
-                    ? 'Atualize os campos do rascunho'
-                    : 'Preencha os campos para criar um novo post'}
-                </p>
-              </div>
-              <button
-                className={
-                  '[width:32px] [height:32px] [border-radius:9px] [border:1px_solid_#C5EDF8] [background:#f0fcff] [color:#7c6fa0] flex items-center justify-center cursor-pointer shrink-0 [transition:background_0.15s,_color_0.15s] hover:[background:#fef2f2] hover:[color:#dc2626] hover:[border-color:#fecaca]'
-                }
-                onClick={closeForm}
-                title="Fechar"
-              >
-                <svg
-                  width="17"
-                  height="17"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                >
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-
-            <form className={'flex flex-col'} onSubmit={handleSubmit}>
-              {error && (
-                <div
-                  className={`${'flex items-center [gap:8px] [border-radius:10px] [padding:12px_16px] [font-size:14px] font-medium [margin-bottom:20px]'} ${'[background:#fef2f2] [border:1px_solid_#fecaca] [color:#dc2626]'}`}
-                >
-                  <svg
-                    width="15"
-                    height="15"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="8" x2="12" y2="12" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                  {error}
-                </div>
-              )}
-
-              <div
-                className={
-                  'grid [grid-template-columns:210px_1fr] [gap:28px] [margin-bottom:24px] max-[680px]:[grid-template-columns:1fr]'
-                }
-              >
-                <div className={'flex flex-col [gap:8px]'}>
-                  <label
-                    className={
-                      '[font-size:14px] font-semibold [color:#374151] [letter-spacing:0.01em]'
-                    }
-                  >
-                    Imagem (opcional)
-                  </label>
-                  <div
-                    className={`${'[aspect-ratio:4_/_3] [border:2px_dashed_#A0BEE8] [border-radius:16px] [background:#f0fcff] flex items-center justify-center cursor-pointer overflow-hidden [transition:border-color_0.2s,_background_0.2s] hover:[border-color:#3783D1] hover:[background:#EBF9FD]'} ${imagePreview ? '[border-style:solid] [border-color:#A0BEE8]' : ''}`}
-                    onClick={() => fileRef.current?.click()}
-                  >
-                    <input
-                      ref={fileRef}
-                      type="file"
-                      accept="image/*"
-                      className={'hidden'}
-                      onChange={onImageChange}
-                    />
-                    {imagePreview ? (
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className={'w-full h-full object-cover'}
-                      />
-                    ) : (
-                      <div
-                        className={
-                          'flex flex-col items-center [gap:8px] [padding:20px] text-center'
-                        }
-                      >
-                        <div
-                          className={
-                            '[width:44px] [height:44px] [border-radius:12px] [background:#C5EDF8] flex items-center justify-center [color:#3783D1]'
-                          }
-                        >
-                          <svg
-                            width="22"
-                            height="22"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <rect
-                              x="3"
-                              y="3"
-                              width="18"
-                              height="18"
-                              rx="2"
-                              ry="2"
-                            />
-                            <circle cx="8.5" cy="8.5" r="1.5" />
-                            <polyline points="21 15 16 10 5 21" />
-                          </svg>
-                        </div>
-                        <span
-                          className={
-                            '[font-size:14px] font-medium [color:#4b5563]'
-                          }
-                        >
-                          Clique para adicionar
-                        </span>
-                        <span className={'[font-size:14px] [color:#6BA3E3]'}>
-                          PNG, JPG, WebP
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  {imagePreview && (
-                    <button
-                      type="button"
-                      className={
-                        'border-0 [background:none] [font-size:14px] font-semibold [color:#3783D1] cursor-pointer [padding:0] [font-family:inherit] [transition:color_0.15s] hover:[color:#2B6BB5]'
-                      }
-                      onClick={() => fileRef.current?.click()}
-                    >
-                      Trocar imagem
-                    </button>
-                  )}
-                </div>
-
-                <div className={'flex flex-col [gap:16px]'}>
-                  <div className={'flex flex-col [gap:6px]'}>
-                    <label
-                      className={
-                        '[font-size:14px] font-semibold [color:#374151] [letter-spacing:0.01em]'
-                      }
-                      htmlFor="postTitle"
-                    >
-                      Título
-                    </label>
-                    <input
-                      id="postTitle"
-                      type="text"
-                      className={
-                        'w-full [background:#f0fcff] [border:1px_solid_#BAE8F6] [border-radius:10px] [padding:11px_14px] [font-size:14px] [color:#1e1b2e] outline-none [transition:border-color_0.2s,_box-shadow_0.2s] [box-sizing:border-box] [font-family:inherit] [appearance:none] placeholder:[color:#6BA3E3] placeholder:font-normal focus:[border-color:#3783D1] focus:[box-shadow:0_0_0_3px_rgba(84,_200,_232,_0.12)] focus:[background:#ffffff]'
-                      }
-                      placeholder="Título do post"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className={'flex flex-col [gap:6px]'}>
-                    <label
-                      className={
-                        '[font-size:14px] font-semibold [color:#374151] [letter-spacing:0.01em]'
-                      }
-                      htmlFor="postUrl"
-                    >
-                      URL (slug)
-                    </label>
-                    <input
-                      id="postUrl"
-                      type="text"
-                      className={
-                        'w-full [background:#f0fcff] [border:1px_solid_#BAE8F6] [border-radius:10px] [padding:11px_14px] [font-size:14px] [color:#1e1b2e] outline-none [transition:border-color_0.2s,_box-shadow_0.2s] [box-sizing:border-box] [font-family:inherit] [appearance:none] placeholder:[color:#6BA3E3] placeholder:font-normal focus:[border-color:#3783D1] focus:[box-shadow:0_0_0_3px_rgba(84,_200,_232,_0.12)] focus:[background:#ffffff]'
-                      }
-                      placeholder="Ex: como-melhorar-seu-site"
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div
-                    className={
-                      'grid [grid-template-columns:1fr_1fr] [gap:14px]'
-                    }
-                  >
-                    <div className={'flex flex-col [gap:6px]'}>
-                      <label
-                        className={
-                          '[font-size:14px] font-semibold [color:#374151] [letter-spacing:0.01em]'
-                        }
-                        htmlFor="postAuthor"
-                      >
-                        Autor
-                      </label>
-                      <select
-                        id="postAuthor"
-                        className={
-                          'w-full [background:#f0fcff] [border:1px_solid_#BAE8F6] [border-radius:10px] [padding:11px_14px] [font-size:14px] [color:#1e1b2e] outline-none [transition:border-color_0.2s,_box-shadow_0.2s] [box-sizing:border-box] [font-family:inherit] [appearance:none] placeholder:[color:#6BA3E3] placeholder:font-normal focus:[border-color:#3783D1] focus:[box-shadow:0_0_0_3px_rgba(84,_200,_232,_0.12)] focus:[background:#ffffff]'
-                        }
-                        value={authorId}
-                        onChange={(e) => setAuthorId(e.target.value)}
-                        required
-                      >
-                        <option value="">Selecione...</option>
-                        {authors.map((a) => (
-                          <option key={a.id} value={a.id}>
-                            {a.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className={'flex flex-col [gap:6px]'}>
-                      <label
-                        className={
-                          '[font-size:14px] font-semibold [color:#374151] [letter-spacing:0.01em]'
-                        }
-                        htmlFor="postLang"
-                      >
-                        Idioma
-                      </label>
-                      <select
-                        id="postLang"
-                        className={
-                          'w-full [background:#f0fcff] [border:1px_solid_#BAE8F6] [border-radius:10px] [padding:11px_14px] [font-size:14px] [color:#1e1b2e] outline-none [transition:border-color_0.2s,_box-shadow_0.2s] [box-sizing:border-box] [font-family:inherit] [appearance:none] placeholder:[color:#6BA3E3] placeholder:font-normal focus:[border-color:#3783D1] focus:[box-shadow:0_0_0_3px_rgba(84,_200,_232,_0.12)] focus:[background:#ffffff]'
-                        }
-                        value={language}
-                        onChange={(e) =>
-                          setLanguage(
-                            e.target.value as 'PORTUGUESE' | 'ENGLISH',
-                          )
-                        }
-                      >
-                        <option value="PORTUGUESE">Português</option>
-                        <option value="ENGLISH">English</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className={'flex flex-col [gap:6px]'}>
-                    <label
-                      className={
-                        '[font-size:14px] font-semibold [color:#374151] [letter-spacing:0.01em]'
-                      }
-                    >
-                      Descrição
-                    </label>
-                    <Suspense fallback={null}>
-                      <RichTextEditor
-                        value={description}
-                        onChange={setDescription}
-                        placeholder="Resumo do post..."
-                        minHeight={140}
-                      />
-                    </Suspense>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                className={
-                  'flex justify-end [gap:12px] [padding-top:16px] [border-top:1px_solid_#EBF9FD]'
-                }
-              >
-                <button
-                  type="button"
-                  className={
-                    '[border:1px_solid_#BAE8F6] [background:#f0fcff] [color:#7c6fa0] [border-radius:10px] [padding:10px_22px] [font-size:14px] font-semibold cursor-pointer [font-family:inherit] [transition:background_0.15s,_border-color_0.15s] hover:[background:#EBF9FD] hover:[border-color:#A0BEE8] hover:[color:#3783D1]'
-                  }
-                  onClick={closeForm}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className={
-                    '[background:#3783D1] [color:#ffffff] border-0 [border-radius:10px] [padding:10px_24px] [font-size:14px] font-semibold cursor-pointer [font-family:inherit] flex items-center [gap:8px] [transition:background_0.15s,_transform_0.1s] [box-shadow:0_2px_10px_rgba(84,_200,_232,_0.3)] hover:[background:#2B6BB5] hover:[transform:translateY(-1px)] disabled:[opacity:0.7] disabled:cursor-not-allowed'
-                  }
-                  disabled={saving}
-                >
-                  {saving && (
-                    <span
-                      className={
-                        '[width:14px] [height:14px] [border:2px_solid_rgba(255,_255,_255,_0.3)] [border-top-color:#fff] [border-radius:50%] animate-spin shrink-0'
-                      }
-                    />
-                  )}
-                  {saving
-                    ? 'Salvando...'
-                    : editingPost
-                      ? 'Atualizar post'
-                      : 'Salvar post'}
-                </button>
-              </div>
-            </form>
-          </div>
+          <BlogPostForm
+            key={editingPost?.id ?? 'new-post'}
+            item={editingPost}
+            onClose={closeForm}
+            onSaved={async (message) => {
+              setSuccess(message);
+              setTimeout(() => setSuccess(''), 3500);
+              closeForm();
+              await refreshEditorial();
+            }}
+          />
         )}
-
         {loading ? (
           <div
             className={
@@ -663,13 +224,7 @@ export function BlogPosts() {
                       src={post.imageUrl}
                       alt={post.title}
                       className={'w-full h-full object-cover'}
-                      onError={(e) =>
-                        console.error('[BlogPosts] falhou ao carregar imagem', {
-                          id: post.id,
-                          imageUrl: post.imageUrl,
-                          error: e.type,
-                        })
-                      }
+                      onError={(e) => undefined}
                     />
                   ) : (
                     <div
@@ -868,159 +423,7 @@ export function BlogPosts() {
           )
         )}
 
-        {/* Authors section */}
-        <div
-          className={
-            '[margin-top:12px] [background:#ffffff] [border-radius:20px] [border:1px_solid_#C5EDF8] [box-shadow:0_2px_12px_rgba(84,_200,_232,_0.06)] [padding:24px_28px]'
-          }
-        >
-          <div
-            className={'flex items-start justify-between [margin-bottom:20px]'}
-          >
-            <div>
-              <h2
-                className={
-                  '[font-size:16px] font-bold [color:#1e1b2e] [margin:0_0_3px]'
-                }
-              >
-                Autores
-              </h2>
-              <p className={'[font-size:14px] [color:#7c6fa0] [margin:0]'}>
-                Gerencie os autores dos posts
-              </p>
-            </div>
-            <button
-              className={
-                '[border:1px_solid_#BAE8F6] [background:#f0fcff] [color:#3783D1] [border-radius:10px] [padding:8px_18px] [font-size:14px] font-semibold cursor-pointer [font-family:inherit] [transition:background_0.15s,_border-color_0.15s] hover:[background:#EBF9FD] hover:[border-color:#A0BEE8]'
-              }
-              onClick={() => setShowAuthorForm(!showAuthorForm)}
-            >
-              {showAuthorForm ? 'Cancelar' : '+ Novo Autor'}
-            </button>
-          </div>
-
-          {showAuthorForm && (
-            <form
-              className={
-                '[background:#f0fcff] [border:1px_solid_#C5EDF8] [border-radius:14px] [padding:20px] [margin-bottom:20px]'
-              }
-              onSubmit={handleCreateAuthor}
-            >
-              <div
-                className={
-                  'grid [grid-template-columns:1fr_1fr] [gap:14px] [margin-bottom:16px] max-[600px]:[grid-template-columns:1fr]'
-                }
-              >
-                <div className={'flex flex-col [gap:6px]'}>
-                  <label
-                    className={
-                      '[font-size:14px] font-semibold [color:#374151] [letter-spacing:0.01em]'
-                    }
-                    htmlFor="authorName"
-                  >
-                    Nome
-                  </label>
-                  <input
-                    id="authorName"
-                    type="text"
-                    className={
-                      'w-full [background:#f0fcff] [border:1px_solid_#BAE8F6] [border-radius:10px] [padding:11px_14px] [font-size:14px] [color:#1e1b2e] outline-none [transition:border-color_0.2s,_box-shadow_0.2s] [box-sizing:border-box] [font-family:inherit] [appearance:none] placeholder:[color:#6BA3E3] placeholder:font-normal focus:[border-color:#3783D1] focus:[box-shadow:0_0_0_3px_rgba(84,_200,_232,_0.12)] focus:[background:#ffffff]'
-                    }
-                    placeholder="Nome do autor"
-                    value={authorName}
-                    onChange={(e) => setAuthorName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className={'flex flex-col [gap:6px]'}>
-                  <label
-                    className={
-                      '[font-size:14px] font-semibold [color:#374151] [letter-spacing:0.01em]'
-                    }
-                    htmlFor="authorBio"
-                  >
-                    Bio (opcional)
-                  </label>
-                  <input
-                    id="authorBio"
-                    type="text"
-                    className={
-                      'w-full [background:#f0fcff] [border:1px_solid_#BAE8F6] [border-radius:10px] [padding:11px_14px] [font-size:14px] [color:#1e1b2e] outline-none [transition:border-color_0.2s,_box-shadow_0.2s] [box-sizing:border-box] [font-family:inherit] [appearance:none] placeholder:[color:#6BA3E3] placeholder:font-normal focus:[border-color:#3783D1] focus:[box-shadow:0_0_0_3px_rgba(84,_200,_232,_0.12)] focus:[background:#ffffff]'
-                    }
-                    placeholder="Breve descrição do autor"
-                    value={authorBio}
-                    onChange={(e) => setAuthorBio(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className={'flex justify-end'}>
-                <button
-                  type="submit"
-                  className={
-                    '[background:#3783D1] [color:#ffffff] border-0 [border-radius:10px] [padding:10px_24px] [font-size:14px] font-semibold cursor-pointer [font-family:inherit] flex items-center [gap:8px] [transition:background_0.15s,_transform_0.1s] [box-shadow:0_2px_10px_rgba(84,_200,_232,_0.3)] hover:[background:#2B6BB5] hover:[transform:translateY(-1px)] disabled:[opacity:0.7] disabled:cursor-not-allowed'
-                  }
-                  disabled={savingAuthor}
-                >
-                  {savingAuthor && (
-                    <span
-                      className={
-                        '[width:14px] [height:14px] [border:2px_solid_rgba(255,_255,_255,_0.3)] [border-top-color:#fff] [border-radius:50%] animate-spin shrink-0'
-                      }
-                    />
-                  )}
-                  {savingAuthor ? 'Salvando...' : 'Criar autor'}
-                </button>
-              </div>
-            </form>
-          )}
-
-          {allAuthors.length > 0 ? (
-            <div className={'flex [flex-wrap:wrap] [gap:10px]'}>
-              {allAuthors.map((author) => (
-                <div
-                  key={author.id}
-                  className={
-                    'flex items-center [gap:10px] [background:#f0fcff] [border:1px_solid_#C5EDF8] [border-radius:12px] [padding:10px_14px] [min-width:160px]'
-                  }
-                >
-                  <div
-                    className={
-                      '[width:34px] [height:34px] [border-radius:50%] [background:linear-gradient(135deg,_#3783D1,_#6BA3E3)] [color:#ffffff] [font-size:14px] font-bold flex items-center justify-center shrink-0'
-                    }
-                  >
-                    {author.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className={'flex flex-col [gap:2px] [min-width:0]'}>
-                    <span
-                      className={
-                        '[font-size:14px] font-semibold [color:#1e1b2e] whitespace-nowrap overflow-hidden [text-overflow:ellipsis]'
-                      }
-                    >
-                      {author.name}
-                    </span>
-                    {author.bio && (
-                      <span
-                        className={
-                          '[font-size:14px] [color:#9ca3af] whitespace-nowrap overflow-hidden [text-overflow:ellipsis]'
-                        }
-                      >
-                        {author.bio}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p
-              className={
-                '[font-size:14px] [color:#9ca3af] [margin:0] [padding:8px_0]'
-              }
-            >
-              Nenhum autor cadastrado ainda.
-            </p>
-          )}
-        </div>
+        <AuthorsPanel />
       </div>
     </div>
   );

@@ -1,7 +1,14 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CasesTab } from './cases/CasesTab';
-import { HistoriasDeClientesTab } from './historias-de-clientes/HistoriasDeClientesTab';
+
+const CasesTab = lazy(() =>
+  import('./cases/CasesTab').then((module) => ({ default: module.CasesTab })),
+);
+const HistoriasDeClientesTab = lazy(() =>
+  import('./historias-de-clientes/HistoriasDeClientesTab').then((module) => ({
+    default: module.HistoriasDeClientesTab,
+  })),
+);
 
 type Tab = 'cases' | 'client-stories';
 
@@ -127,24 +134,28 @@ export function Cases() {
           </div>
         )}
 
-        <div style={{ display: activeTab === 'cases' ? undefined : 'none' }}>
-          <CasesTab
-            openFormTrigger={openFormTrigger}
-            onSuccess={handleSuccess}
-            onCountChange={setCasesCount}
-          />
-        </div>
-        <div
-          style={{
-            display: activeTab === 'client-stories' ? undefined : 'none',
-          }}
+        <Suspense
+          fallback={
+            <div className="py-16 text-center text-slate-500">
+              Carregando seção…
+            </div>
+          }
         >
-          <HistoriasDeClientesTab
-            openFormTrigger={openFormTrigger}
-            onSuccess={handleSuccess}
-            onCountChange={setStoriesCount}
-          />
-        </div>
+          {activeTab === 'cases' && (
+            <CasesTab
+              openFormTrigger={openFormTrigger}
+              onSuccess={handleSuccess}
+              onCountChange={setCasesCount}
+            />
+          )}
+          {activeTab === 'client-stories' && (
+            <HistoriasDeClientesTab
+              openFormTrigger={openFormTrigger}
+              onSuccess={handleSuccess}
+              onCountChange={setStoriesCount}
+            />
+          )}
+        </Suspense>
       </div>
     </div>
   );

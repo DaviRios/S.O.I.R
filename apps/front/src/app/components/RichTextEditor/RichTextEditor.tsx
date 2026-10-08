@@ -17,6 +17,8 @@ export function RichTextEditor({
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Editor | null>(null);
+  const initialValueRef = useRef(value);
+  const onChangeRef = useRef(onChange);
   const [activeFormats, setActiveFormats] = useState<Set<string>>(new Set());
 
   function syncFormats(e: Editor) {
@@ -33,15 +35,19 @@ export function RichTextEditor({
   }
 
   useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
     if (!containerRef.current) return;
 
     const editor = new Editor({
       element: containerRef.current,
       extensions: [StarterKit],
-      content: value || '',
+      content: initialValueRef.current || '',
       onUpdate({ editor: e }) {
         const html = e.getHTML();
-        onChange(html === '<p></p>' ? '' : html);
+        onChangeRef.current(html === '<p></p>' ? '' : html);
         syncFormats(e);
       },
       onSelectionUpdate({ editor: e }) {
@@ -62,7 +68,7 @@ export function RichTextEditor({
       editor.destroy();
       editorRef.current = null;
     };
-  }, []);
+  }, [minHeight]);
 
   useEffect(() => {
     const e = editorRef.current;

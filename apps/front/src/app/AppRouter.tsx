@@ -1,52 +1,67 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthContextProvider, AuthRouterMiddleware } from './auth/auth';
-import { Login } from './pages/login/Login';
-import { Dashboard } from './pages/dashboard/Dashboard';
-import { HomeLogos } from './pages/home-logos/HomeLogos';
-import { ClientStories } from './pages/client-stories/ClientStories';
-import { BlogPosts } from './pages/blog-posts/BlogPosts';
-import { About } from './pages/about/About';
-import { Cases } from './pages/cases/Cases';
-import { HomeContent } from './pages/home-content/HomeContent';
-import { MediaGallery } from './pages/media/MediaGallery';
+import { AdminLayout } from './components/AdminLayout/AdminLayout';
 
-function AppRoutes() {
+const Login = lazy(() => import('./pages/login/Login'));
+const Dashboard = lazy(() => import('./pages/dashboard/Dashboard'));
+const HomeLogos = lazy(() => import('./pages/home-logos/HomeLogos'));
+const ClientStories = lazy(
+  () => import('./pages/client-stories/ClientStories'),
+);
+const BlogPosts = lazy(() => import('./pages/blog-posts/BlogPosts'));
+const About = lazy(() => import('./pages/about/About'));
+const Cases = lazy(() => import('./pages/cases/Cases'));
+const HomeContent = lazy(() => import('./pages/home-content/HomeContent'));
+const MediaGallery = lazy(() => import('./pages/media/MediaGallery'));
+
+function Loading() {
   return (
-    <Routes>
-      <Route index element={<Dashboard />} />
-      <Route path="home-logos" element={<HomeLogos />} />
-      <Route path="client-stories" element={<ClientStories />} />
-      <Route path="blog-posts" element={<BlogPosts />} />
-      <Route path="about" element={<About />} />
-      <Route path="cases" element={<Cases />} />
-      <Route path="home-content" element={<HomeContent />} />
-      <Route path="media" element={<MediaGallery />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <div className="grid min-h-screen place-items-center text-slate-500">
+      Carregando…
+    </div>
   );
 }
 
-const skipAuth = import.meta.env.VITE_SKIP_AUTH === 'true';
+function AppRoutes() {
+  return (
+    <AdminLayout>
+      <Suspense fallback={<Loading />}>
+        <Routes>
+          <Route index element={<Dashboard />} />
+          <Route path="home-logos" element={<HomeLogos />} />
+          <Route path="client-stories" element={<ClientStories />} />
+          <Route path="blog-posts" element={<BlogPosts />} />
+          <Route path="about" element={<About />} />
+          <Route path="cases" element={<Cases />} />
+          <Route path="home-content" element={<HomeContent />} />
+          <Route path="media" element={<MediaGallery />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
+    </AdminLayout>
+  );
+}
 
 export function AppRouter() {
-  const basename = import.meta.env.BASE_URL || '/';
-
-  // Atalho opcional para desenvolvimento e testes locais.
-  if (skipAuth) {
-    return (
-      <BrowserRouter basename={basename}>
-        <AppRoutes />
-      </BrowserRouter>
-    );
-  }
-
   return (
-    <BrowserRouter basename={basename}>
+    <BrowserRouter
+      basename={import.meta.env.BASE_URL || '/'}
+      future={{ v7_relativeSplatPath: true, v7_startTransition: true }}
+    >
       <AuthContextProvider>
         <AuthRouterMiddleware
           authenticatedComponent={<AppRoutes />}
-          unauthenticatedComponent={<Login />}
-          errorComponent={<Login />}
+          unauthenticatedComponent={
+            <Suspense fallback={<Loading />}>
+              <Login />
+            </Suspense>
+          }
+          errorComponent={
+            <Suspense fallback={<Loading />}>
+              <Login />
+            </Suspense>
+          }
         />
       </AuthContextProvider>
     </BrowserRouter>

@@ -15,32 +15,16 @@ export interface CreateAuthorDTO {
   bio?: string;
 }
 
-export async function listAuthors(): Promise<AuthorDTO[]> {
-  console.log('[authors] listAuthors → GET /authors');
-  try {
-    return await httpClient.get<AuthorDTO[]>('authors');
-  } catch (err) {
-    console.error('[authors] listAuthors falhou', err);
-    throw err;
-  }
+export async function listAuthors(signal?: AbortSignal): Promise<AuthorDTO[]> {
+  return await httpClient.get<AuthorDTO[]>('authors', signal);
 }
 
-export async function listAuthorsDropdown(): Promise<AuthorDTO[]> {
-  console.log('[authors] listAuthorsDropdown → GET /authors/dropdown');
-  try {
-    return await httpClient.get<AuthorDTO[]>('authors/dropdown');
-  } catch (err) {
-    console.error('[authors] listAuthorsDropdown falhou', err);
-    throw err;
-  }
+export async function listAuthorsDropdown(
+  signal?: AbortSignal,
+): Promise<AuthorDTO[]> {
+  return await httpClient.get<AuthorDTO[]>('authors/dropdown', signal);
 }
 
 export async function createAuthor(data: CreateAuthorDTO): Promise<void> {
-  console.log('[authors] createAuthor → POST /authors', { name: data.name });
-  try {
-    return await httpClient.post('authors', JSON.stringify(data));
-  } catch (err) {
-    console.error('[authors] createAuthor falhou', { data }, err);
-    throw err;
-  }
+  return await httpClient.post('authors', JSON.stringify(data));
 }

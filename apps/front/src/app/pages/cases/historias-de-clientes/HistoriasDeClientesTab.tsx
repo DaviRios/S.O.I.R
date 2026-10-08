@@ -1,4 +1,5 @@
 import { useState, useEffect, FormEvent, ChangeEvent, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   listClientStories,
   createClientStory,
@@ -22,8 +23,6 @@ export function HistoriasDeClientesTab({
   onSuccess,
   onCountChange,
 }: Props) {
-  const [clientStories, setClientStories] = useState<ClientStoryDTO[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -41,27 +40,21 @@ export function HistoriasDeClientesTab({
     onConfirm: () => Promise<void>;
   } | null>(null);
   const csImageRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    load();
-  }, []);
+  const queryClient = useQueryClient();
+  const storiesQuery = useQuery({
+    queryKey: ['client-stories'],
+    queryFn: ({ signal }) => listClientStories(signal),
+  });
+  const clientStories = storiesQuery.data ?? [];
+  const loading = storiesQuery.isPending;
+  useEffect(
+    () => onCountChange(clientStories.length),
+    [clientStories.length, onCountChange],
+  );
 
   useEffect(() => {
     if (openFormTrigger > 0) openStoryForm();
   }, [openFormTrigger]);
-
-  async function load() {
-    setLoading(true);
-    try {
-      const data = await listClientStories();
-      setClientStories(data);
-      onCountChange(data.length);
-    } catch {
-      // silent
-    } finally {
-      setLoading(false);
-    }
-  }
 
   function openStoryForm(s?: ClientStoryDTO) {
     if (s) {
@@ -141,7 +134,7 @@ export function HistoriasDeClientesTab({
       }
       closeForm();
       const data = await listClientStories();
-      setClientStories(data);
+      queryClient.setQueryData(['client-stories'], data);
       onCountChange(data.length);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar história.');
@@ -154,10 +147,14 @@ export function HistoriasDeClientesTab({
     try {
       await toggleClientStory(s.id);
       const data = await listClientStories();
-      setClientStories(data);
+      queryClient.setQueryData(['client-stories'], data);
       onCountChange(data.length);
-    } catch {
-      /* ignore */
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Erro ao alterar a história.',
+      );
     }
   }
 
@@ -166,10 +163,14 @@ export function HistoriasDeClientesTab({
       if (s.isPublished) await unpublishClientStory(s.id);
       else await publishClientStory(s.id);
       const data = await listClientStories();
-      setClientStories(data);
+      queryClient.setQueryData(['client-stories'], data);
       onCountChange(data.length);
-    } catch {
-      /* ignore */
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Erro ao alterar a publicação da história.',
+      );
     }
   }
 
@@ -179,7 +180,7 @@ export function HistoriasDeClientesTab({
       onConfirm: async () => {
         await deleteClientStory(s.id);
         const data = await listClientStories();
-        setClientStories(data);
+        queryClient.setQueryData(['client-stories'], data);
         onCountChange(data.length);
       },
     });
@@ -682,8 +683,12 @@ export function HistoriasDeClientesTab({
                 onClick={async () => {
                   try {
                     await pendingDelete.onConfirm();
-                  } catch {
-                    /* ignore */
+                  } catch (reason) {
+                    setError(
+                      reason instanceof Error
+                        ? reason.message
+                        : 'Erro ao excluir a história.',
+                    );
                   }
                   setPendingDelete(null);
                 }}

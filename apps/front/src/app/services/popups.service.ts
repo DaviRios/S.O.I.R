@@ -49,28 +49,16 @@ export interface CreatePopupDTO {
   language: 'ENGLISH' | 'PORTUGUESE';
 }
 
-export async function listPopups(language?: string): Promise<PopupDTO[]> {
-  console.log('[popups] listPopups → GET /popups', { language });
-  try {
-    const qs = language ? `?language=${language}` : '';
-    return await httpClient.get<PopupDTO[]>(`popups${qs}`);
-  } catch (err) {
-    console.error('[popups] listPopups falhou', { language }, err);
-    throw err;
-  }
+export async function listPopups(
+  language?: string,
+  signal?: AbortSignal,
+): Promise<PopupDTO[]> {
+  const qs = language ? `?language=${language}` : '';
+  return await httpClient.get<PopupDTO[]>(`popups${qs}`, signal);
 }
 
 export async function createPopup(data: CreatePopupDTO): Promise<void> {
-  console.log('[popups] createPopup → POST /popups', {
-    title: data.title,
-    language: data.language,
-  });
-  try {
-    return await httpClient.post('popups', JSON.stringify(data));
-  } catch (err) {
-    console.error('[popups] createPopup falhou', { data }, err);
-    throw err;
-  }
+  return await httpClient.post('popups', JSON.stringify(data));
 }
 
 export interface UpdatePopupDTO {
@@ -88,41 +76,17 @@ export async function updatePopup(
   id: string,
   data: UpdatePopupDTO,
 ): Promise<void> {
-  console.log('[popups] updatePopup → PATCH /popups/:id', { id });
-  try {
-    return await httpClient.patch(`popups/${id}`, JSON.stringify(data));
-  } catch (err) {
-    console.error('[popups] updatePopup falhou', { id, data }, err);
-    throw err;
-  }
+  return await httpClient.patch(`popups/${id}`, JSON.stringify(data));
 }
 
 export async function deletePopup(id: string): Promise<void> {
-  console.log('[popups] deletePopup → DELETE /popups/:id', { id });
-  try {
-    return await httpClient.delete(`popups/${id}`);
-  } catch (err) {
-    console.error('[popups] deletePopup falhou', { id }, err);
-    throw err;
-  }
+  return await httpClient.delete(`popups/${id}`);
 }
 
 export async function publishPopup(id: string): Promise<void> {
-  console.log('[popups] publishPopup → PATCH /popups/:id/publish', { id });
-  try {
-    return await httpClient.patch(`popups/${id}/publish`);
-  } catch (err) {
-    console.error('[popups] publishPopup falhou', { id }, err);
-    throw err;
-  }
+  return await httpClient.patch(`popups/${id}/publish`);
 }
 
 export async function unpublishPopup(id: string): Promise<void> {
-  console.log('[popups] unpublishPopup → PATCH /popups/:id/unpublish', { id });
-  try {
-    return await httpClient.patch(`popups/${id}/unpublish`);
-  } catch (err) {
-    console.error('[popups] unpublishPopup falhou', { id }, err);
-    throw err;
-  }
+  return await httpClient.patch(`popups/${id}/unpublish`);
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   listImages,
   uploadImage,
@@ -15,8 +16,6 @@ interface Props {
 }
 
 export function LogosTab({ openFormTrigger, onSuccess, onCountChange }: Props) {
-  const [logos, setLogos] = useState<UploadedImage[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -25,32 +24,20 @@ export function LogosTab({ openFormTrigger, onSuccess, onCountChange }: Props) {
     onConfirm: () => Promise<void>;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    load();
-  }, []);
+  const queryClient = useQueryClient();
+  const logosQuery = useQuery({
+    queryKey: ['home-logos'],
+    queryFn: ({ signal }) =>
+      listImages(undefined, undefined, ['logo', 'home'], signal),
+    select: (items) => items.map(({ id, url, name }) => ({ id, url, name })),
+  });
+  const logos = logosQuery.data ?? [];
+  const loading = logosQuery.isPending;
+  useEffect(() => onCountChange(logos.length), [logos.length, onCountChange]);
 
   useEffect(() => {
     if (openFormTrigger > 0) fileInputRef.current?.click();
   }, [openFormTrigger]);
-
-  async function load() {
-    setLoading(true);
-    try {
-      const results = await listImages(undefined, undefined, ['logo', 'home']);
-      const mapped = results.map((r) => ({
-        id: r.id,
-        url: r.url,
-        name: r.name,
-      }));
-      setLogos(mapped);
-      onCountChange(mapped.length);
-    } catch {
-      setError('Erro ao carregar logos.');
-    } finally {
-      setLoading(false);
-    }
-  }
 
   async function handleUpload(files: FileList | File[]) {
     const fileArray = Array.from(files);
@@ -68,7 +55,7 @@ export function LogosTab({ openFormTrigger, onSuccess, onCountChange }: Props) {
         url: r.url,
         name: r.name,
       }));
-      setLogos(mapped);
+      queryClient.setQueryData(['home-logos'], mapped);
       onCountChange(mapped.length);
       onSuccess(
         `${fileArray.length > 1 ? fileArray.length + ' logos adicionadas' : 'Logo adicionada'} com sucesso!`,
@@ -85,11 +72,14 @@ export function LogosTab({ openFormTrigger, onSuccess, onCountChange }: Props) {
       label: logo.name,
       onConfirm: async () => {
         await deleteImage(logo.id);
-        setLogos((prev) => {
-          const next = prev.filter((l) => l.id !== logo.id);
-          onCountChange(next.length);
-          return next;
-        });
+        queryClient.setQueryData<UploadedImage[]>(
+          ['home-logos'],
+          (prev = []) => {
+            const next = prev.filter((l) => l.id !== logo.id);
+            onCountChange(next.length);
+            return next;
+          },
+        );
       },
     });
   }

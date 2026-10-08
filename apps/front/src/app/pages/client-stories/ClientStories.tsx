@@ -37,8 +37,12 @@ export function ClientStories() {
     try {
       const data = await listClientStories();
       setStories(data);
-    } catch {
-      // keep empty list on load failure
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Erro ao carregar histórias.',
+      );
     } finally {
       setLoading(false);
     }
@@ -110,8 +114,12 @@ export function ClientStories() {
         await publishClientStory(story.id);
       }
       loadStories();
-    } catch {
-      // silently fail toggle
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Erro ao alterar publicação.',
+      );
     }
   }
 

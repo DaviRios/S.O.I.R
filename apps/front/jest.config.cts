@@ -6,5 +6,6 @@ module.exports = {
     '^.+\\.[tj]sx?$': ['babel-jest', { presets: ['@nx/react/babel'] }]
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
+  moduleNameMapper: { '^@soir/contracts$': '<rootDir>/../../libs/contracts/src/index.ts' },
   coverageDirectory: '../../coverage/apps/front'
 };

@@ -1,4 +1,5 @@
 import { useState, useEffect, FormEvent, ChangeEvent, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   listEcosystemItems,
   createEcosystemItem,
@@ -24,8 +25,6 @@ export function EcosystemTab({
   onSuccess,
   onCountChange,
 }: Props) {
-  const [ecoItems, setEcoItems] = useState<EcosystemDTO[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -38,27 +37,21 @@ export function EcosystemTab({
     onConfirm: () => Promise<void>;
   } | null>(null);
   const ecoImageRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    load();
-  }, []);
+  const queryClient = useQueryClient();
+  const ecosystemQuery = useQuery({
+    queryKey: ['ecosystems'],
+    queryFn: ({ signal }) => listEcosystemItems(signal),
+  });
+  const ecoItems = ecosystemQuery.data ?? [];
+  const loading = ecosystemQuery.isPending;
+  useEffect(
+    () => onCountChange(ecoItems.length),
+    [ecoItems.length, onCountChange],
+  );
 
   useEffect(() => {
     if (openFormTrigger > 0) openItemForm();
   }, [openFormTrigger]);
-
-  async function load() {
-    setLoading(true);
-    try {
-      const data = await listEcosystemItems();
-      setEcoItems(data);
-      onCountChange(data.length);
-    } catch {
-      // silent
-    } finally {
-      setLoading(false);
-    }
-  }
 
   function openItemForm(item?: EcosystemDTO) {
     if (item) {
@@ -116,7 +109,7 @@ export function EcosystemTab({
       setShowForm(false);
       resetForm();
       const data = await listEcosystemItems();
-      setEcoItems(data);
+      queryClient.setQueryData(['ecosystems'], data);
       onCountChange(data.length);
     } catch (err) {
       setError(
@@ -136,10 +129,14 @@ export function EcosystemTab({
       if (item.isPublished) await unpublishEcosystemItem(item.id);
       else await publishEcosystemItem(item.id);
       const data = await listEcosystemItems();
-      setEcoItems(data);
+      queryClient.setQueryData(['ecosystems'], data);
       onCountChange(data.length);
-    } catch {
-      /* ignore */
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Erro ao alterar a publicação do item.',
+      );
     }
   }
 
@@ -147,10 +144,12 @@ export function EcosystemTab({
     try {
       await toggleEcosystemItem(item.id);
       const data = await listEcosystemItems();
-      setEcoItems(data);
+      queryClient.setQueryData(['ecosystems'], data);
       onCountChange(data.length);
-    } catch {
-      /* ignore */
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : 'Erro ao alterar o item.',
+      );
     }
   }
 
@@ -160,7 +159,7 @@ export function EcosystemTab({
       onConfirm: async () => {
         await deleteEcosystemItem(item.id);
         const data = await listEcosystemItems();
-        setEcoItems(data);
+        queryClient.setQueryData(['ecosystems'], data);
         onCountChange(data.length);
       },
     });

@@ -1,4 +1,5 @@
 import { useState, useEffect, FormEvent, ChangeEvent, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   listSlides,
   createSlide,
@@ -26,8 +27,6 @@ export function SlidesTab({
   onSuccess,
   onCountChange,
 }: Props) {
-  const [slides, setSlides] = useState<SlideDTO[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -43,27 +42,18 @@ export function SlidesTab({
     onConfirm: () => Promise<void>;
   } | null>(null);
   const slLogoRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    load();
-  }, []);
+  const queryClient = useQueryClient();
+  const slidesQuery = useQuery({
+    queryKey: ['slides'],
+    queryFn: ({ signal }) => listSlides(undefined, signal),
+  });
+  const slides = slidesQuery.data ?? [];
+  const loading = slidesQuery.isPending;
+  useEffect(() => onCountChange(slides.length), [onCountChange, slides.length]);
 
   useEffect(() => {
     if (openFormTrigger > 0) openSlideForm();
   }, [openFormTrigger]);
-
-  async function load() {
-    setLoading(true);
-    try {
-      const data = await listSlides();
-      setSlides(data);
-      onCountChange(data.length);
-    } catch {
-      // silent
-    } finally {
-      setLoading(false);
-    }
-  }
 
   function openSlideForm(slide?: SlideDTO) {
     if (slide) {
@@ -132,7 +122,7 @@ export function SlidesTab({
       setShowForm(false);
       resetForm();
       const data = await listSlides();
-      setSlides(data);
+      queryClient.setQueryData(['slides'], data);
       onCountChange(data.length);
     } catch (err) {
       setError(
@@ -152,10 +142,14 @@ export function SlidesTab({
       if (slide.isPublished) await unpublishSlide(slide.id);
       else await publishSlide(slide.id);
       const data = await listSlides();
-      setSlides(data);
+      queryClient.setQueryData(['slides'], data);
       onCountChange(data.length);
-    } catch {
-      /* ignore */
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Erro ao alterar a publicação do slide.',
+      );
     }
   }
 
@@ -163,10 +157,12 @@ export function SlidesTab({
     try {
       await toggleSlide(slide.id);
       const data = await listSlides();
-      setSlides(data);
+      queryClient.setQueryData(['slides'], data);
       onCountChange(data.length);
-    } catch {
-      /* ignore */
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : 'Erro ao alterar o slide.',
+      );
     }
   }
 
@@ -176,7 +172,7 @@ export function SlidesTab({
       onConfirm: async () => {
         await deleteSlide(slide.id);
         const data = await listSlides();
-        setSlides(data);
+        queryClient.setQueryData(['slides'], data);
         onCountChange(data.length);
       },
     });

@@ -234,10 +234,10 @@ export function AdminLayout({
           }
         >
           <div className={'flex-1'} />
-          <div className={'flex-1 flex justify-center'}>
+          <div className={'flex-1 justify-center sm:flex'}>
             <span
               className={
-                '[font-size:14px] font-medium [color:#6b7280] [letter-spacing:0.01em]'
+                'hidden whitespace-nowrap text-sm font-medium tracking-wide text-slate-500 sm:inline'
               }
             >
               {getFormattedDate()}
@@ -257,7 +257,7 @@ export function AdminLayout({
           </div>
         </header>
 
-        <main className={'flex-1 [padding:36px_40px]'}>{children}</main>
+        <main className="flex-1 p-4 sm:p-6 lg:p-10">{children}</main>
       </div>
     </div>
   );

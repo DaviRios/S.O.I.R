@@ -2,12 +2,19 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
-import { nxCopyAssetsPlugin } from '@nx/vite/plugins/nx-copy-assets.plugin';
+import { fileURLToPath, URL } from 'node:url';
 
 export default defineConfig(() => ({
   root: import.meta.dirname,
   cacheDir: '../../node_modules/.vite/apps/front',
+  publicDir: 'public',
+  resolve: {
+    alias: {
+      '@soir/contracts': fileURLToPath(
+        new URL('../../libs/contracts/src/index.ts', import.meta.url),
+      ),
+    },
+  },
   server: {
     port: 4200,
     host: 'localhost',
@@ -19,12 +26,7 @@ export default defineConfig(() => ({
     port: 4200,
     host: 'localhost',
   },
-  plugins: [
-    tailwindcss(),
-    react(),
-    nxViteTsPaths(),
-    nxCopyAssetsPlugin(['*.md']),
-  ],
+  plugins: [tailwindcss(), react()],
   // Uncomment this if you are using workers.
   // worker: {
   //   plugins: () => [ nxViteTsPaths() ],

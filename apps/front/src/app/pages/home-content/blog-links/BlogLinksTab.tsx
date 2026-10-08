@@ -1,4 +1,5 @@
 import { useState, useEffect, FormEvent } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   listHomeBlogLinks,
   createHomeBlogLink,
@@ -20,8 +21,6 @@ export function BlogLinksTab({
   onSuccess,
   onCountChange,
 }: Props) {
-  const [blogLinks, setBlogLinks] = useState<HomeBlogLinkDTO[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -31,10 +30,17 @@ export function BlogLinksTab({
     label: string;
     onConfirm: () => Promise<void>;
   } | null>(null);
-
-  useEffect(() => {
-    load();
-  }, []);
+  const queryClient = useQueryClient();
+  const linksQuery = useQuery({
+    queryKey: ['home-blog-links'],
+    queryFn: ({ signal }) => listHomeBlogLinks(signal),
+  });
+  const blogLinks = linksQuery.data ?? [];
+  const loading = linksQuery.isPending;
+  useEffect(
+    () => onCountChange(blogLinks.length),
+    [blogLinks.length, onCountChange],
+  );
 
   useEffect(() => {
     if (openFormTrigger > 0) {
@@ -42,19 +48,6 @@ export function BlogLinksTab({
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [openFormTrigger]);
-
-  async function load() {
-    setLoading(true);
-    try {
-      const data = await listHomeBlogLinks();
-      setBlogLinks(data);
-      onCountChange(data.length);
-    } catch {
-      // silent
-    } finally {
-      setLoading(false);
-    }
-  }
 
   function resetForm() {
     setBlUrl('');
@@ -72,7 +65,7 @@ export function BlogLinksTab({
       setShowForm(false);
       resetForm();
       const data = await listHomeBlogLinks();
-      setBlogLinks(data);
+      queryClient.setQueryData(['home-blog-links'], data);
       onCountChange(data.length);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar link.');
@@ -85,10 +78,12 @@ export function BlogLinksTab({
     try {
       await toggleHomeBlogLink(link.id);
       const data = await listHomeBlogLinks();
-      setBlogLinks(data);
+      queryClient.setQueryData(['home-blog-links'], data);
       onCountChange(data.length);
-    } catch {
-      /* ignore */
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : 'Erro ao alterar o link.',
+      );
     }
   }
 
@@ -98,7 +93,7 @@ export function BlogLinksTab({
       onConfirm: async () => {
         await deleteHomeBlogLink(link.id);
         const data = await listHomeBlogLinks();
-        setBlogLinks(data);
+        queryClient.setQueryData(['home-blog-links'], data);
         onCountChange(data.length);
       },
     });

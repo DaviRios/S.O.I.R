@@ -1,10 +1,29 @@
-import { useState, useEffect, useCallback } from 'react';
+import { lazy, Suspense, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SlidesTab } from './slides/SlidesTab';
-import { EcosystemTab } from './ecosystem/EcosystemTab';
-import { LogosTab } from './logos/LogosTab';
-import { PopupsTab } from './popups/PopupsTab';
-import { BlogLinksTab } from './blog-links/BlogLinksTab';
+
+const SlidesTab = lazy(() =>
+  import('./slides/SlidesTab').then((module) => ({
+    default: module.SlidesTab,
+  })),
+);
+const EcosystemTab = lazy(() =>
+  import('./ecosystem/EcosystemTab').then((module) => ({
+    default: module.EcosystemTab,
+  })),
+);
+const LogosTab = lazy(() =>
+  import('./logos/LogosTab').then((module) => ({ default: module.LogosTab })),
+);
+const PopupsTab = lazy(() =>
+  import('./popups/PopupsTab').then((module) => ({
+    default: module.PopupsTab,
+  })),
+);
+const BlogLinksTab = lazy(() =>
+  import('./blog-links/BlogLinksTab').then((module) => ({
+    default: module.BlogLinksTab,
+  })),
+);
 
 type Tab = 'slides' | 'ecosystem' | 'logos' | 'popups' | 'blog-links';
 
@@ -159,25 +178,19 @@ export function HomeContent() {
           </div>
         )}
 
-        <div style={{ display: activeTab === 'slides' ? undefined : 'none' }}>
-          <SlidesTab {...tabProps} />
-        </div>
-        <div
-          style={{ display: activeTab === 'ecosystem' ? undefined : 'none' }}
+        <Suspense
+          fallback={
+            <div className="py-16 text-center text-slate-500">
+              Carregando seção…
+            </div>
+          }
         >
-          <EcosystemTab {...tabProps} />
-        </div>
-        <div style={{ display: activeTab === 'logos' ? undefined : 'none' }}>
-          <LogosTab {...tabProps} />
-        </div>
-        <div style={{ display: activeTab === 'popups' ? undefined : 'none' }}>
-          <PopupsTab {...tabProps} />
-        </div>
-        <div
-          style={{ display: activeTab === 'blog-links' ? undefined : 'none' }}
-        >
-          <BlogLinksTab {...tabProps} />
-        </div>
+          {activeTab === 'slides' && <SlidesTab {...tabProps} />}
+          {activeTab === 'ecosystem' && <EcosystemTab {...tabProps} />}
+          {activeTab === 'logos' && <LogosTab {...tabProps} />}
+          {activeTab === 'popups' && <PopupsTab {...tabProps} />}
+          {activeTab === 'blog-links' && <BlogLinksTab {...tabProps} />}
+        </Suspense>
       </div>
     </div>
   );
