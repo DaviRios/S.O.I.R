@@ -1,4 +1,7 @@
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, {
+  type FastifyInstance,
+  type FastifyServerOptions,
+} from 'fastify';
 import cookie from '@fastify/cookie';
 import jwt from '@fastify/jwt';
 import multipart from '@fastify/multipart';
@@ -15,6 +18,10 @@ import {
   createDatabase,
   type DatabaseClient,
 } from './infrastructure/database/prisma';
+import {
+  createLoggerOptions,
+  ResponseOnlyLogController,
+} from './infrastructure/logging/http-logging';
 import { AuthService } from './modules/auth/auth.service';
 import { PrismaAuthRepository } from './modules/auth/prisma-auth.repository';
 import { authRoutes } from './modules/auth/auth.routes';
@@ -42,7 +49,7 @@ import { siteContentRoutes } from './modules/site-content/site-content.routes';
 export interface BuildAppOptions {
   env: AppEnv;
   database?: DatabaseClient;
-  logger?: boolean;
+  logger?: FastifyServerOptions['logger'];
   connectDatabase?: boolean;
 }
 
@@ -51,8 +58,10 @@ export async function buildApp(
 ): Promise<FastifyInstance> {
   const { env } = options;
   const database = options.database ?? createDatabase(env.DATABASE_URL);
+  const logController = new ResponseOnlyLogController();
   const app = Fastify({
-    logger: options.logger ?? env.NODE_ENV !== 'test',
+    logger: options.logger ?? createLoggerOptions(env),
+    logController,
     trustProxy: true,
   });
 
@@ -110,7 +119,7 @@ export async function buildApp(
         })),
       });
     }
-    request.log.error({ err: error }, 'Unhandled request error');
+    logController.captureError(request, error);
     return reply.code(500).send({
       statusCode: 500,
       code: 'INTERNAL_ERROR',

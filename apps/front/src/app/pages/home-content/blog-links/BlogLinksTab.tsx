@@ -292,12 +292,7 @@ export function BlogLinksTab({
                   'flex justify-end [padding-top:10px] [border-top:1px_solid_#EBF9FD]'
                 }
               >
-                <button
-                  className={`${'border-0 [background:none] [font-size:14px] font-semibold cursor-pointer [font-family:inherit] [padding:5px_12px] [border-radius:8px] [transition:background_0.15s]'} ${link.isActive ? '[color:#dc2626] [background:#fef2f2] hover:[background:#fee2e2]' : '[color:#3783D1] [background:#EBF9FD] hover:[background:#C5EDF8]'}`}
-                  onClick={() => handleToggle(link)}
-                >
-                  {link.isActive ? 'Desativar' : 'Ativar'}
-                </button>
+                
                 <button
                   className={`${'border-0 [background:none] [font-size:14px] font-semibold cursor-pointer [font-family:inherit] [padding:5px_12px] [border-radius:8px] [transition:background_0.15s]'} ${'[color:#dc2626] [background:#fef2f2] hover:[background:#fee2e2]'}`}
                   onClick={() => handleDelete(link)}

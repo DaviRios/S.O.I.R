@@ -1,8 +1,31 @@
 import { spawn, spawnSync } from 'node:child_process';
+import { Transform } from 'node:stream';
 
 const isWindows = process.platform === 'win32';
 const children = new Map();
 let stopping = false;
+
+function prefixLines(name) {
+  let pending = '';
+
+  return new Transform({
+    transform(chunk, _encoding, callback) {
+      const lines = `${pending}${chunk.toString()}`.split(/\r?\n/);
+      pending = lines.pop() ?? '';
+      callback(
+        null,
+        lines
+          .filter((line) => line.length > 0)
+          .map((line) => `[${name}] ${line}\n`)
+          .join(''),
+      );
+    },
+    flush(callback) {
+      if (pending) this.push(`[${name}] ${pending}\n`);
+      callback();
+    },
+  });
+}
 
 function stopProcessTree(child) {
   if (!child.pid) return;
@@ -40,10 +63,12 @@ function start(name, script) {
     ? ['/d', '/s', '/c', `npm run ${script}`]
     : ['run', script];
   const child = spawn(command, args, {
-    stdio: ['ignore', 'inherit', 'inherit'],
+    stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
     detached: !isWindows,
   });
+  child.stdout.pipe(prefixLines(name)).pipe(process.stdout, { end: false });
+  child.stderr.pipe(prefixLines(name)).pipe(process.stderr, { end: false });
   children.set(name, child);
   child.once('error', (error) => {
     console.error(`[${name}] Falha ao iniciar: ${error.message}`);

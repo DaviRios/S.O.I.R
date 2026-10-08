@@ -6,8 +6,8 @@
   "scripts": {
     "postinstall": "prisma generate",
     "dev": "node tools/dev.mjs",
-    "dev:back": "nx serve back",
-    "dev:front": "nx serve front",
+    "dev:back": "nx serve back --outputStyle=stream-without-prefixes",
+    "dev:front": "nx serve front --outputStyle=stream-without-prefixes",
     "build": "nx run-many -t build --all",
     "test": "nx run-many -t test --all --runInBand",
     "typecheck": "tsc -p apps/back/tsconfig.app.json --noEmit && tsc -p apps/front/tsconfig.app.json --noEmit && tsc -p apps/back/tsconfig.spec.json --noEmit && tsc -p apps/front/tsconfig.spec.json --noEmit && tsc -p tools/tsconfig.json --noEmit",
@@ -59,6 +59,7 @@
     "jest-util": "~30.3.0",
     "jiti": "2.4.2",
     "nx": "23.1.1",
+    "pino-pretty": "^13.2.0",
     "prettier": "~3.6.2",
     "prisma": "7.10.0",
     "tailwindcss": "^4.3.3",

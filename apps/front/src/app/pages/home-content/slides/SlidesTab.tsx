@@ -550,12 +550,6 @@ export function SlidesTab({
                     </button>
                   )}
                   <button
-                    className={`${'border-0 [background:none] [font-size:14px] font-semibold cursor-pointer [font-family:inherit] [padding:5px_12px] [border-radius:8px] [transition:background_0.15s]'} ${slide.isActive ? '[color:#dc2626] [background:#fef2f2] hover:[background:#fee2e2]' : '[color:#3783D1] [background:#EBF9FD] hover:[background:#C5EDF8]'}`}
-                    onClick={() => handleToggleActive(slide)}
-                  >
-                    {slide.isActive ? 'Desativar' : 'Ativar'}
-                  </button>
-                  <button
                     className={`${'border-0 [background:none] [font-size:14px] font-semibold cursor-pointer [font-family:inherit] [padding:5px_12px] [border-radius:8px] [transition:background_0.15s]'} ${slide.isPublished ? '[color:#dc2626] [background:#fef2f2] hover:[background:#fee2e2]' : '[color:#3783D1] [background:#EBF9FD] hover:[background:#C5EDF8]'}`}
                     onClick={() => handleTogglePublish(slide)}
                   >

@@ -5,6 +5,9 @@ const envSchema = z
     NODE_ENV: z
       .enum(['development', 'test', 'production'])
       .default('development'),
+    LOG_LEVEL: z
+      .enum(['silent', 'fatal', 'error', 'warn', 'info', 'debug', 'trace'])
+      .optional(),
     PORT: z.coerce.number().int().positive().default(3000),
     APP_ORIGIN: z.url().default('http://localhost:4200'),
     DATABASE_URL: z.string().min(1),
